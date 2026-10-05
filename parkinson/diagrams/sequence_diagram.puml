@@ -1,0 +1,20 @@
+@startuml
+title Sequence Diagram
+
+actor User
+participant Frontend
+participant API
+participant Extractor
+participant Model
+
+User -> Frontend : Upload/Record Video
+Frontend -> API : POST /predict-video
+API -> Extractor : Extract Features
+Extractor -> Extractor : Detect Hands
+Extractor -> Extractor : Calculate Features
+Extractor -> API : Feature Vector
+API -> Model : Predict
+Model -> API : Prediction Results
+API -> Frontend : JSON Response
+Frontend -> User : Display Results
+@enduml

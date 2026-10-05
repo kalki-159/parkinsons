@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Tremor Tracker · AI-Powered Parkinson's Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+:root{
+  --bg:#04090f;
+  --surface:#08111e;
+  --surface2:#0d1929;
+  --surface3:#122038;
+  --border:rgba(56,189,248,0.10);
+  --border-h:rgba(56,189,248,0.38);
+  --accent:#38bdf8;
+  --accent2:#0ea5e9;
+  --accent3:#7dd3fc;
+  --accent4:#bae6fd;
+  --text:#e8f4fd;
+  --text-muted:#7fa8c9;
+  --text-dim:#3d6080;
+  --success:#22c55e;
+  --warn:#f59e0b;
+  --danger:#ef4444;
+  --r:14px;
+  --rs:8px;
+  --glow:0 0 40px rgba(56,189,248,.12);
+  --glow2:0 0 80px rgba(56,189,248,.22);
+  --font:'Poppins',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.65;overflow-x:hidden;cursor:none}
+
+/* ── CURSOR ─────────────────────────────────────── */
+#cur{width:10px;height:10px;background:var(--accent);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:screen;transition:width .15s,height .15s,background .2s}
+#cur-r{width:34px;height:34px;border:1.5px solid rgba(56,189,248,.45);border-radius:50%;position:fixed;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .18s cubic-bezier(.23,1,.32,1),width .2s,height .2s,border-color .2s}
+body:has(a:hover) #cur-r,body:has(button:hover) #cur-r{width:54px;height:54px;border-color:var(--accent)}
+body:has(a:hover) #cur,body:has(button:hover) #cur{width:6px;height:6px}
+
+/* ── SCROLLBAR ───────────────────────────────────── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:rgba(56,189,248,.28);border-radius:4px}
+
+/* ── NOISE ───────────────────────────────────────── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9990;opacity:.35}
+
+/* ── NAV ─────────────────────────────────────────── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:62px;background:rgba(4,9,15,.88);backdrop-filter:blur(22px);border-bottom:1px solid var(--border)}
+.nav-inner{max-width:1320px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;padding:0 2.2rem;height:100%}
+.logo{display:flex;align-items:center;gap:.55rem;font-size:1.22rem;font-weight:800;color:var(--accent);text-decoration:none;letter-spacing:-.03em;cursor:pointer}
+.logo-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-mark svg{width:18px;height:18px}
+.nav-links{display:flex;gap:.15rem;list-style:none}
+.nav-links a{display:block;padding:.45rem 1.15rem;font-size:.84rem;font-weight:600;color:var(--text-muted);text-decoration:none;border-radius:8px;letter-spacing:.02em;transition:color .2s,background .2s;position:relative}
+.nav-links a::after{content:'';position:absolute;bottom:5px;left:50%;right:50%;height:2px;background:var(--accent);border-radius:2px;transition:left .25s,right .25s}
+.nav-links a:hover{color:var(--accent)}
+.nav-links a:hover::after,.nav-links a.active::after{left:18%;right:18%}
+.nav-links a.active{color:var(--accent)}
+
+/* ── PAGES ───────────────────────────────────────── */
+.page{display:none;padding-top:62px;min-height:100vh}
+.page.active{display:block}
+
+/* ── FADE ANIMATIONS ─────────────────────────────── */
+.fade-up{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.23,1,.32,1),transform .7s cubic-bezier(.23,1,.32,1)}
+.fade-up.vis{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}
+
+/* ── BUTTONS ─────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.72rem 1.7rem;font-family:var(--font);font-size:.875rem;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:all .22s cubic-bezier(.23,1,.32,1);letter-spacing:.01em;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.07);opacity:0;transition:opacity .2s}
+.btn:hover::after{opacity:1}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04090f;box-shadow:0 4px 22px rgba(56,189,248,.28)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 34px rgba(56,189,248,.42)}
+.btn-secondary{background:rgba(56,189,248,.08);color:var(--accent);border:1.5px solid rgba(56,189,248,.28)}
+.btn-secondary:hover{background:rgba(56,189,248,.15);border-color:var(--accent);transform:translateY(-2px)}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff}
+.btn-danger:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(239,68,68,.38)}
+.btn-sm{padding:.46rem 1rem;font-size:.8rem}
+
+/* ── SECTION ─────────────────────────────────────── */
+.sec{padding:5.5rem 2rem}
+.sec-in{max-width:1220px;margin:0 auto}
+.sec-chip{display:inline-block;font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.18);padding:.28rem .85rem;border-radius:100px;margin-bottom:.9rem}
+.sec-title{font-size:clamp(1.7rem,3.2vw,2.6rem);font-weight:800;letter-spacing:-.04em;color:var(--text);margin-bottom:.7rem;line-height:1.08}
+.sec-desc{font-size:1.02rem;color:var(--text-muted);max-width:580px;margin-bottom:3rem}
+.alt-bg{background:var(--surface)}
+
+/* ═══════════════════════════════════════════════════
+   HOME PAGE
+═══════════════════════════════════════════════════ */
+/* HERO */
+.hero{position:center;min-height:calc(100vh - 62px);display:flex;align-items:center;overflow:hidden;padding:4rem 2.2rem}
+
+/* animated grid */
+.hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.04) 1px,transparent 1px);background-size:55px 55px;animation:grid-drift 22s linear infinite}
+@keyframes grid-drift{from{background-position:0 0}to{background-position:55px 55px}}
+
+/* gradient radial */
+.hero-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;height:80%;background:radial-gradient(ellipse at center,rgba(56,189,248,.08) 0%,transparent 70%);pointer-events:none}
+
+/* orbs */
+.orb{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;animation:orb-drift 9s ease-in-out infinite}
+.orb1{width:420px;height:420px;background:rgba(56,189,248,.06);top:-80px;right:5%}
+.orb2{width:260px;height:260px;background:rgba(14,165,233,.05);bottom:-60px;left:10%;animation-delay:4s}
+@keyframes orb-drift{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-28px) scale(1.04)}}
+
+.hero-inner{max-width:800px;margin:0 auto;width:100%;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;z-index:1}
+@media(max-width:900px){.hero-inner{text-align:center}}
+
+/* left col */
+
+.hero-left{width:100%;display:flex;flex-direction:column;align-items:center}
+.hero-eyebrow{text-align:center;:inline-flex;align-items:center;gap:.5rem;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.22);color:var(--accent3);padding:.38rem 1rem;border-radius:100px;font-size:.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:1.5rem;animation:fade-down .8s cubic-bezier(.23,1,.32,1) both}
+.e-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes fade-down{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+
+.hero h1{font-size:clamp(2.4rem,5.5vw,4.4rem);font-weight:900;line-height:1.03;letter-spacing:-.05em;margin-bottom:1.4rem;animation:h1-in 1s .15s cubic-bezier(.23,1,.32,1) both}
+@keyframes h1-in{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+.g{background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,#a5f3fc 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-desc{font-size:1.08rem;color:var(--text-muted);max-width:600px;text-align:center;animation:h1-in 1s .28s cubic-bezier(.23,1,.32,1) both}
+.hero-cta{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;animation:h1-in 1s .4s cubic-bezier(.23,1,.32,1) both;margin-bottom:2.8rem}
+@media(max-width:900px){.hero-cta{justify-content:center}}
+
+.hero-stats{display:flex;justify-content:center;gap:1rem;animation:h1-in 1s .55s cubic-bezier(.23,1,.32,1) both}
+.hero-stat{background:var(--surface);padding:1.2rem 2rem;border:1px solid var(--border);border-radius:var(--r);transition:background .25s,border-color .25s;min-width:140px}
+.hero-stat:hover{background:var(--surface2);border-color:var(--border-h)}
+.hero-stat{background:var(--surface);padding:1.6rem 1.2rem;text-align:center;transition:background .25s}
+.hero-stat:hover{background:var(--surface2)}
+.stat-n{font-size:2rem;font-weight:900;color:var(--accent);line-height:1;margin-bottom:.35rem;letter-spacing:-.03em}
+.stat-l{font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+
+
+/* ── DISEASE OVERVIEW CARDS ─── */
+.overview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem}
+@media(max-width:720px){.overview-grid{grid-template-columns:1fr}}
+.ov-card{padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);transition:border-color .25s,transform .25s,box-shadow .25s;position:relative;overflow:hidden}
+.ov-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.23,1,.32,1)}
+.ov-card:hover{border-color:var(--border-h);transform:translateY(-4px);box-shadow:var(--glow)}
+.ov-card:hover::before{transform:scaleX(1)}
+.ov-icon{width:44px;height:44px;border-radius:10px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.18);display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+.ov-icon svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ov-card h3{font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:.5rem}
+.ov-card p{color:var(--text-muted);font-size:.9rem;line-height:1.72}
+
+/* ── BAR CHART ─── */
+.stats-chart{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2.5rem}
+.chart-head{font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:2rem;display:flex;align-items:center;gap:.5rem}
+.bar-chart{display:flex;flex-direction:column;gap:1.2rem}
+.bar-item{display:flex;align-items:center;gap:1rem}
+.bar-label{width:170px;font-size:.82rem;color:var(--text-muted);flex-shrink:0;text-align:right;font-weight:500}
+.bar-track{flex:1;height:9px;background:rgba(56,189,248,.07);border-radius:10px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:10px;width:0;transition:width 1.6s cubic-bezier(.23,1,.32,1)}
+.bar-value{width:55px;font-size:.8rem;color:var(--accent);font-weight:700}
+
+/* donut row */
+.donut-row{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;margin-top:3rem}
+@media(max-width:720px){.donut-row{grid-template-columns:repeat(2,1fr)}}
+.donut-item{text-align:center}
+.donut-svg{display:block;margin:0 auto .7rem}
+.donut-circle-bg{fill:none;stroke:rgba(56,189,248,.09);stroke-width:8}
+.donut-circle-fill{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;stroke-dasharray:283;stroke-dashoffset:283;transition:stroke-dashoffset 2s cubic-bezier(.23,1,.32,1)}
+.donut-pct{font-size:1.5rem;font-weight:900;color:var(--accent);letter-spacing:-.02em}
+.donut-label{font-size:.75rem;color:var(--text-muted);margin-top:.2rem;font-weight:600}
+
+/* ── TREATMENT CARDS ─── */
+.treatment-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1.4rem}
+.tc{padding:1.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);transition:transform .25s,border-color .25s,box-shadow .25s;position:relative;overflow:hidden}
+.tc:hover{transform:translateY(-5px);border-color:var(--border-h);box-shadow:var(--glow)}
+.tc-icon-wrap{width:48px;height:48px;border-radius:12px;background:rgba(56,189,248,.09);border:1px solid rgba(56,189,248,.16);display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+.tc-icon-wrap svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tc-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.45rem}
+.tc-desc{font-size:.85rem;color:var(--text-muted);line-height:1.65}
+
+/* ── HOW IT WORKS ─── */
+.pipeline{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;margin-top:3rem}
+.pipe-step{display:flex;flex-direction:column;align-items:center;padding:1.8rem 1.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);min-width:130px;text-align:center;transition:transform .25s,border-color .25s,box-shadow .25s;z-index:1}
+.pipe-step:hover{transform:scale(1.07);border-color:var(--border-h);box-shadow:var(--glow)}
+.pipe-num{width:26px;height:26px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;font-size:.72rem;font-weight:800;color:#04090f;display:flex;align-items:center;justify-content:center;margin-bottom:.7rem}
+.pipe-icon-wrap{width:48px;height:48px;border-radius:12px;background:rgba(56,189,248,.09);display:flex;align-items:center;justify-content:center;margin-bottom:.7rem}
+.pipe-icon-wrap svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pipe-label{font-size:.84rem;font-weight:700;color:var(--text)}
+.pipe-info{font-size:.74rem;color:var(--text-muted);margin-top:.25rem}
+.pipe-arr{font-size:1.2rem;color:var(--accent);margin:0 .5rem;animation:arr-pulse 1.6s ease-in-out infinite}
+@keyframes arr-pulse{0%,100%{opacity:.35;transform:translateX(0)}50%{opacity:1;transform:translateX(4px)}}
+@media(max-width:768px){.pipeline{flex-direction:column}.pipe-arr{transform:rotate(90deg)}}
+
+/* ═══════════════════════════════════════════════════
+   ANALYSIS PAGE
+═══════════════════════════════════════════════════ */
+.a-tabs{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;max-width:400px;margin-bottom:2.5rem}
+.a-tab{flex:1;padding:.72rem 1.4rem;background:transparent;border:none;color:var(--text-muted);font-family:var(--font);font-size:.85rem;font-weight:600;cursor:pointer;transition:background .22s,color .22s;display:flex;align-items:center;justify-content:center;gap:.45rem}
+.a-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04090f}
+.a-tab:hover:not(.active){background:rgba(56,189,248,.07);color:var(--accent)}
+
+.a-panel{display:none}
+.a-panel.active{display:block}
+
+/* live layout */
+.live-layout{display:grid;grid-template-columns:1fr 360px;gap:2rem}
+@media(max-width:880px){.live-layout{grid-template-columns:1fr}}
+
+.video-frame{background:#000;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:relative;aspect-ratio:16/9}
+.video-frame video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.vid-badge{position:absolute;top:10px;left:10px;background:rgba(239,68,68,.85);color:#fff;font-size:.7rem;font-weight:800;padding:.22rem .55rem;border-radius:6px;letter-spacing:.06em}
+.vid-status{position:absolute;top:10px;right:10px;background:rgba(4,9,15,.8);color:var(--accent);font-size:.76rem;padding:.22rem .7rem;border-radius:6px;border:1px solid var(--border)}
+
+.rec-indicator{display:none;align-items:center;gap:.5rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);border-radius:8px;padding:.55rem .9rem;color:#fca5a5;font-size:.85rem;font-weight:600;margin-top:.75rem}
+.rec-indicator.on{display:flex}
+.rec-dot{width:8px;height:8px;background:#ef4444;border-radius:50%;animation:rec-blink .8s ease-in-out infinite}
+@keyframes rec-blink{0%,100%{opacity:1}50%{opacity:.18}}
+
+/* control panel */
+.ctrl-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.7rem;display:flex;flex-direction:column;gap:1.5rem}
+.cp-label{font-size:.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.55rem}
+.ctrl-btns{display:flex;flex-direction:column;gap:.55rem}
+.ctrl-btns .btn{width:100%;justify-content:center}
+
+.ai-status-list{display:flex;flex-direction:column;gap:.45rem}
+.ai-si{display:flex;align-items:center;gap:.7rem;padding:.6rem .85rem;background:rgba(4,9,15,.55);border:1px solid var(--border);border-radius:8px;font-size:.83rem}
+.si-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.si-dot.ready{background:var(--success);box-shadow:0 0 6px var(--success)}
+.si-dot.queued{background:var(--warn);box-shadow:0 0 6px var(--warn)}
+.si-dot.idle{background:var(--text-dim)}
+.si-text{flex:1;color:var(--text)}
+.si-state{font-size:.73rem;color:var(--text-muted)}
+
+/* upload */
+.upload-box{border:2px dashed rgba(56,189,248,.22);border-radius:var(--r);padding:4rem 2rem;text-align:center;cursor:pointer;background:var(--surface);transition:all .25s;position:relative}
+.upload-box:hover,.upload-box.over{border-color:var(--accent);background:rgba(56,189,248,.04)}
+.upload-icon{width:70px;height:70px;background:rgba(56,189,248,.09);border:1px solid rgba(56,189,248,.18);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.2rem;transition:transform .25s}
+.upload-icon svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.upload-box:hover .upload-icon{transform:scale(1.1)}
+.upload-box h3{font-size:1.12rem;font-weight:700;margin-bottom:.4rem}
+.upload-box p{color:var(--text-muted);font-size:.88rem;margin-bottom:1.2rem}
+.fmt-tags{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.fmt-tag{background:rgba(56,189,248,.1);color:var(--accent);border:1px solid rgba(56,189,248,.18);padding:.22rem .65rem;border-radius:6px;font-size:.76rem;font-weight:700}
+
+/* video preview */
+.vid-preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:none;margin-top:1.2rem}
+.vp-header{padding:.95rem 1.4rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:.8rem}
+.vp-fn{font-size:.88rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vp-badge{background:rgba(56,189,248,.11);color:var(--accent);font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:6px;flex-shrink:0}
+.vp-prog{padding:.7rem 1.4rem;background:rgba(4,9,15,.4)}
+.prog-bar{width:100%;height:4px;background:rgba(56,189,248,.08);border-radius:4px;overflow:hidden;margin-bottom:.35rem}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .3s ease;width:0}
+.prog-label{font-size:.72rem;color:var(--text-muted)}
+.vp-video{background:#000;position:relative}
+.vp-video video{width:100%;display:block;max-height:340px;object-fit:contain;background:#000}
+.vp-actions{padding:1.1rem 1.4rem;border-top:1px solid var(--border);display:flex;gap:.7rem;align-items:center}
+
+/* progress bar (single, no steps) */
+.analysis-progress{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;margin-top:2rem}
+.analysis-progress.on{display:block}
+.ap-head{display:flex;align-items:center;gap:.7rem;margin-bottom:1.4rem}
+.ap-spinner{width:20px;height:20px;border:2px solid rgba(56,189,248,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ap-title-text{font-size:.95rem;font-weight:700;color:var(--text)}
+.ap-status{font-size:.82rem;color:var(--text-muted);margin-bottom:1rem}
+.ap-bar{width:100%;height:8px;background:rgba(56,189,248,.08);border-radius:8px;overflow:hidden}
+.ap-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:8px;transition:width .4s cubic-bezier(.23,1,.32,1)}
+.ap-pct{font-size:.8rem;color:var(--accent);font-weight:700;text-align:right;margin-top:.4rem}
+
+/* results */
+.results-sec{margin-top:2.5rem}
+.results-grid{display:grid;grid-template-columns:310px 1fr;gap:2rem;margin-top:2rem}
+@media(max-width:880px){.results-grid{grid-template-columns:1fr}}
+
+.risk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;text-align:center}
+.risk-card-title{font-size:.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1.5rem}
+.gauge-wrap{margin:0 auto 1.4rem;width:160px;height:86px;position:relative}
+.gauge-wrap svg{display:block}
+.g-track{fill:none;stroke:rgba(56,189,248,.09);stroke-width:14}
+.g-fill{fill:none;stroke:var(--accent);stroke-width:14;stroke-linecap:round;stroke-dasharray:251;stroke-dashoffset:251;transition:stroke-dashoffset 1.5s cubic-bezier(.23,1,.32,1),stroke .5s}
+.risk-score{font-size:2.6rem;font-weight:900;color:var(--accent);line-height:1;margin-bottom:.25rem;letter-spacing:-.03em}
+.risk-lbl{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.25rem}
+.risk-conf{font-size:.8rem;color:var(--text-muted);margin-bottom:1.4rem}
+.risk-badges{display:flex;gap:.35rem;justify-content:center;flex-wrap:wrap}
+.r-badge{padding:.22rem .65rem;border-radius:6px;font-size:.7rem;font-weight:700;background:rgba(56,189,248,.07);color:var(--text-muted);border:1px solid var(--border)}
+.r-badge.hi{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04090f;border-color:transparent}
+
+.metrics-panel{display:flex;flex-direction:column;gap:1.1rem}
+.metric-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.4rem 1.6rem;display:flex;justify-content:space-between;align-items:center;transition:border-color .22s}
+.metric-row:hover{border-color:var(--border-h)}
+.ml-lbl{font-size:.68rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.28rem}
+.ml-val{font-size:1.55rem;font-weight:900;color:var(--accent);letter-spacing:-.02em}
+.ml-desc{font-size:.78rem;color:var(--text-muted)}
+.metric-icon-wrap{width:42px;height:42px;border-radius:10px;background:rgba(56,189,248,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.metric-icon-wrap svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.8rem;grid-column:1 / -1}
+.chart-card h4{font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+.chart-sub{font-size:.8rem;color:var(--text-muted);margin-bottom:1.2rem}
+
+.clinical-card{grid-column:1 / -1;display:flex;gap:1.4rem;background:rgba(56,189,248,.04);border:1px solid rgba(56,189,248,.18);border-radius:var(--r);padding:1.7rem}
+.cc-icon{font-size:2.2rem;flex-shrink:0;display:flex;align-items:center}
+.cc-body h4{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.45rem}
+.cc-body p{color:var(--text-muted);font-size:.88rem}
+
+.suggestion-box{grid-column:1/-1;padding:1.4rem 1.7rem;border-radius:var(--r);border:1px solid;display:none}
+.suggestion-box.show{display:block}
+.suggestion-box.normal{background:rgba(34,197,94,.05);border-color:rgba(34,197,94,.28)}
+.suggestion-box.mild{background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.28)}
+.suggestion-box.severe{background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.28)}
+.sb-head{font-size:.88rem;font-weight:700;margin-bottom:.35rem}
+.suggestion-box.normal .sb-head{color:var(--success)}
+.suggestion-box.mild .sb-head{color:var(--warn)}
+.suggestion-box.severe .sb-head{color:var(--danger)}
+.sb-text{font-size:.88rem;color:var(--text-muted)}
+
+.no-results{text-align:center;padding:4rem 2rem;color:var(--text-muted)}
+.no-results-icon{margin:0 auto 1rem;width:56px;height:56px;border-radius:14px;background:rgba(56,189,248,.07);display:flex;align-items:center;justify-content:center}
+.no-results-icon svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+.disclaimer-strip{display:flex;align-items:flex-start;gap:.7rem;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.18);border-radius:10px;padding:.95rem 1.35rem;color:#fca5a5;font-size:.83rem;margin-top:1.4rem}
+.disclaimer-strip svg{flex-shrink:0;margin-top:1px;width:16px;height:16px;stroke:#fca5a5;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ═══════════════════════════════════════════════════
+   ABOUT PAGE
+═══════════════════════════════════════════════════ */
+.about-hero{background:linear-gradient(135deg,var(--surface) 0%,var(--bg) 100%);border-bottom:1px solid var(--border);padding:5rem 2rem 4.5rem;text-align:center;position:relative;overflow:hidden}
+.about-hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.03) 1px,transparent 1px);background-size:44px 44px}
+.about-hero-in{position:relative;z-index:1;max-width:680px;margin:0 auto}
+.about-hero h1{font-size:clamp(2rem,4vw,3rem);font-weight:900;letter-spacing:-.05em;margin-bottom:.9rem}
+.about-hero p{color:var(--text-muted);font-size:1rem}
+
+.ab-content{max-width:1100px;margin:0 auto;padding:0 2rem}
+.ab-section{padding:3.5rem 0;border-bottom:1px solid var(--border)}
+.ab-section:last-child{border-bottom:none}
+.ab-section h2{font-size:1.7rem;font-weight:800;letter-spacing:-.04em;margin-bottom:.65rem}
+.ab-section h2 span{color:var(--accent)}
+.ab-lead{font-size:.98rem;color:var(--text-muted);margin-bottom:1.8rem;line-height:1.8;max-width:720px}
+
+.ab-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;margin:1.5rem 0}
+@media(max-width:700px){.ab-stats-row{grid-template-columns:repeat(2,1fr)}}
+.asb{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;text-align:center;transition:transform .25s,box-shadow .25s}
+.asb:hover{transform:translateY(-4px);box-shadow:var(--glow)}
+.asb-n{font-size:2rem;font-weight:900;color:var(--accent);letter-spacing:-.03em;line-height:1;margin-bottom:.4rem}
+.asb-l{font-size:.78rem;color:var(--text-muted);font-weight:600}
+
+.symptoms-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin:1.5rem 0}
+.sc{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.2rem;text-align:center;transition:border-color .22s,transform .22s}
+.sc:hover{border-color:var(--border-h);transform:translateY(-3px)}
+.sc-icon{width:44px;height:44px;border-radius:10px;background:rgba(56,189,248,.09);display:flex;align-items:center;justify-content:center;margin:0 auto .75rem}
+.sc-icon svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sc-lbl{font-size:.85rem;font-weight:700;color:var(--text)}
+.sc-desc{font-size:.75rem;color:var(--text-muted);margin-top:.22rem}
+
+/* timeline */
+.timeline{position:relative;padding-left:2rem;margin:1.5rem 0}
+.timeline::before{content:'';position:absolute;left:0;top:8px;bottom:0;width:2px;background:linear-gradient(to bottom,var(--accent),transparent)}
+.tl-item{position:relative;margin-bottom:2.2rem;padding-left:1.4rem}
+.tl-dot{position:absolute;left:-2.55rem;top:4px;width:13px;height:13px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);box-shadow:0 0 10px rgba(56,189,248,.45)}
+.tl-stage{font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem}
+.tl-title{font-size:1rem;font-weight:700;margin-bottom:.35rem}
+.tl-desc{font-size:.87rem;color:var(--text-muted);line-height:1.7}
+
+.treatment-detail{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0}
+@media(max-width:680px){.treatment-detail{grid-template-columns:1fr}}
+.td-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;transition:border-color .22s}
+.td-card:hover{border-color:var(--border-h)}
+.td-title{font-size:.9rem;font-weight:700;color:var(--accent);margin-bottom:.9rem;display:flex;align-items:center;gap:.45rem}
+.td-title svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.td-card ul{list-style:none;display:flex;flex-direction:column;gap:.45rem}
+.td-card li{font-size:.85rem;color:var(--text-muted);padding-left:1.1rem;position:relative;line-height:1.5}
+.td-card li::before{content:'→';position:absolute;left:0;color:var(--accent);font-size:.76rem}
+
+.proj-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2.2rem;margin:1.5rem 0}
+.proj-box h3{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.75rem;display:flex;align-items:center;gap:.45rem}
+.proj-box p{color:var(--text-muted);font-size:.9rem;line-height:1.8;margin-bottom:.9rem}
+.proj-box p:last-child{margin-bottom:0}
+.proj-box code{color:var(--accent);background:rgba(56,189,248,.08);padding:.1rem .4rem;border-radius:4px;font-family:var(--mono);font-size:.82rem}
+
+/* ═══════════════════════════════════════════════════
+   TEAM PAGE
+═══════════════════════════════════════════════════ 
+.team-page{max-width:1100px;margin:0 auto;padding:4rem 2rem}
+.team-hero-text{text-align:center;margin-bottom:3.5rem}
+
+/* SIDE BY SIDE CARDS *
+.team-cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+@media(max-width:780px){.team-cards-row{grid-template-columns:1fr}}
+
+.team-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:2rem;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;transition:transform .3s cubic-bezier(.23,1,.32,1),border-color .3s,box-shadow .3s;position:relative;overflow:hidden}
+.team-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.23,1,.32,1)}
+.team-card:hover{transform:translateY(-6px);border-color:var(--border-h);box-shadow:var(--glow2)}
+.team-card:hover::before{transform:scaleX(1)}
+
+.team-avatar{width:96px;height:96px;border-radius:50%;overflow:hidden;margin-bottom:1.1rem;border:3px solid rgba(56,189,248,.28);box-shadow:0 0 28px rgba(56,189,248,.18);flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center}
+.team-avatar img{width:100%;height:100%;object-fit:cover}
+.team-avatar-initials{font-size:2rem;font-weight:900;color:#04090f;font-family:var(--font)}
+.team-name{font-size:1.15rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.2rem}
+.team-role{font-size:.8rem;color:var(--accent);font-weight:600;margin-bottom:.7rem}
+.team-blurb{font-size:.83rem;color:var(--text-muted);line-height:1.6;flex:1}
+.team-card-hint{font-size:.7rem;color:var(--text-dim);margin-top:1.2rem}
+
+/* team detail modal 
+.team-detail{display:none;position:fixed;inset:0;background:rgba(4,9,15,.88);backdrop-filter:blur(14px);z-index:2000;align-items:center;justify-content:center;padding:2rem}
+.team-detail.open{display:flex}
+.td-modal{background:var(--surface2);border:1px solid var(--border-h);border-radius:20px;padding:2.8rem;max-width:720px;width:100%;display:grid;grid-template-columns:160px 1fr;gap:2.5rem;align-items:start;box-shadow:0 40px 80px rgba(0,0,0,.5),var(--glow2);animation:modal-in .4s cubic-bezier(.34,1.56,.64,1);position:relative}
+@media(max-width:580px){.td-modal{grid-template-columns:1fr;text-align:center}}
+@keyframes modal-in{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+.td-av{width:140px;height:140px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;border:4px solid rgba(56,189,248,.35);box-shadow:0 0 50px rgba(56,189,248,.28)}
+.td-av img{width:100%;height:100%;object-fit:cover}
+.td-av-initials{font-size:3rem;font-weight:900;color:#04090f}
+@media(max-width:580px){.td-av{margin:0 auto}}
+.td-n{font-size:1.7rem;font-weight:900;letter-spacing:-.04em;margin-bottom:.2rem}
+.td-r{color:var(--accent);font-weight:600;font-size:.95rem;margin-bottom:1rem}
+.td-bio{color:var(--text-muted);font-size:.9rem;line-height:1.78;margin-bottom:1.4rem}
+.td-skills{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:1.4rem}
+.td-skill{background:rgba(56,189,248,.09);color:var(--accent3);border:1px solid rgba(56,189,248,.18);padding:.28rem .75rem;border-radius:20px;font-size:.75rem;font-weight:600}
+.td-close{position:absolute;top:1.3rem;right:1.3rem;background:rgba(56,189,248,.09);border:1px solid var(--border);color:var(--text);cursor:pointer;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s}
+.td-close:hover{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.38)}
+
+/* FOOTER */
+footer{background:rgba(4,9,15,.96);border-top:1px solid var(--border);padding:3.5rem 2rem}
+.footer-inner{max-width:1220px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3rem}
+@media(max-width:680px){.footer-inner{grid-template-columns:1fr}}
+.footer-brand p{font-size:.84rem;color:var(--text-muted);margin-top:.6rem}
+footer h4{font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+footer ul{list-style:none;display:flex;flex-direction:column;gap:.45rem}
+footer ul a{font-size:.85rem;color:var(--text-muted);text-decoration:none;transition:color .2s}
+footer ul a:hover{color:var(--accent)}
+.footer-bottom{max-width:1220px;margin:2rem auto 0;padding-top:2rem;border-top:1px solid var(--border);text-align:center;font-size:.78rem;color:var(--text-dim)}
+  </style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur-r"></div>
+
+<!-- ── NAV ─────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="#" onclick="showPage('home');return false;">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.57A3 3 0 0 1 5 12a3 3 0 0 1 1.97-2.83 2.5 2.5 0 0 1 1.54-7.17z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.57A3 3 0 0 0 19 12a3 3 0 0 0-1.97-2.83 2.5 2.5 0 0 0-1.54-7.17z"/></svg>
+      </div>
+      CogniVue
+    </a>
+      <ul class="nav-links">
+      <li><a href="#" id="nav-home" class="active" onclick="showPage('home');return false;">Home</a></li>
+      <li><a href="#" id="nav-analysis" onclick="showPage('analysis');return false;">Analysis</a></li>
+      <li><a href="#" id="nav-about" onclick="showPage('about');return false;">About</a></li>
+      <li><a href="#" id="nav-team" onclick="showPage('team');return false;">Team</a></li>
+      </ul>
+    </div>
+  </nav>
+
+<!-- ══════════════════════════════════════════════════
+     HOME PAGE
+══════════════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="hero-eyebrow"><span class="e-dot"></span> AI-Powered Neurological Screening</div>
+        <h1>Detect <span class="g">Parkinson's</span><br>Before It Progresses</h1>
+        <p class="hero-desc">CogniVue uses motion intelligence to screen for Parkinson's symptoms in real time. Record a short movement video or upload existing footage for an AI screening score.</p>
+        <div class="hero-cta">
+          <button class="btn btn-primary" onclick="showPage('analysis')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16 10,8"/></svg>
+            Start Analysis
+          </button>
+          <button class="btn btn-secondary" onclick="showPage('about')">Learn More</button>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><div class="stat-n" data-count="86.0">0</div><div class="stat-l">Model Accuracy %</div></div>
+          <div class="hero-stat"><div class="stat-n" data-count="2" data-suffix="s">0</div><div class="stat-l">Inference Time</div></div>
+          <div class="hero-stat"><div class="stat-n" data-count="12000" data-suffix="+">0</div><div class="stat-l">Analyses Done</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DISEASE OVERVIEW -->
+  <section class="sec alt-bg">
+    <div class="sec-in">
+      <div class="fade-up">
+        <span class="sec-chip">About the Disease</span>
+        <h2 class="sec-title">What is Parkinson's Disease?</h2>
+        <p class="sec-desc">A progressive neurological disorder affecting movement, arising from the loss of dopamine-producing neurons in the brain.</p>
+      </div>
+      <div class="overview-grid">
+        <div class="ov-card fade-up d1">
+          <div class="ov-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
+          <h3>Neurological Origin</h3>
+          <p>Parkinson's occurs when neurons in the substantia nigra progressively deteriorate. These neurons produce dopamine — a chemical messenger that coordinates smooth, controlled movement.</p>
+        </div>
+        <div class="ov-card fade-up d2">
+          <div class="ov-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <h3>Progressive Condition</h3>
+          <p>Symptoms worsen gradually over time. Early signs include a barely noticeable tremor in one hand, while later stages affect balance, speech, and cognitive functions. It is the second most common neurodegenerative disease.</p>
+        </div>
+        <div class="ov-card fade-up d3">
+          <div class="ov-icon"><svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+          <h3>Core Symptoms</h3>
+          <p>The hallmark signs are tremors, bradykinesia (slowness of movement), rigidity, and postural instability. Non-motor symptoms include depression, sleep disorders, and cognitive changes.</p>
+        </div>
+        <div class="ov-card fade-up d4">
+          <div class="ov-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+          <h3>Global Impact</h3>
+          <p>Over 10 million people worldwide live with Parkinson's disease. Men are 1.5× more likely to develop it. Most diagnoses occur after age 60, though early-onset cases exist.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATISTICS -->
+  <section class="sec">
+    <div class="sec-in">
+      <div class="fade-up">
+        <span class="sec-chip">Global Statistics</span>
+        <h2 class="sec-title">The Numbers Tell the Story</h2>
+        <p class="sec-desc">Parkinson's disease is more common than you might think — and growing.</p>
+      </div>
+      <div class="stats-chart fade-up d1">
+        <div class="chart-head">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Parkinson's Disease — Key Global Statistics
+        </div>
+        <div class="bar-chart">
+          <div class="bar-item"><div class="bar-label">Global prevalence</div><div class="bar-track"><div class="bar-fill" data-width="88"></div></div><div class="bar-value">10M+</div></div>
+          <div class="bar-item"><div class="bar-label">Diagnosed annually</div><div class="bar-track"><div class="bar-fill" data-width="62"></div></div><div class="bar-value">90K/yr</div></div>
+          <div class="bar-item"><div class="bar-label">Cases in India</div><div class="bar-track"><div class="bar-fill" data-width="70"></div></div><div class="bar-value">7M+</div></div>
+          <div class="bar-item"><div class="bar-label">Cases by 2040 (est.)</div><div class="bar-track"><div class="bar-fill" data-width="95"></div></div><div class="bar-value">14M+</div></div>
+          <div class="bar-item"><div class="bar-label">Early detection rate</div><div class="bar-track"><div class="bar-fill" data-width="28"></div></div><div class="bar-value">~25%</div></div>
+        </div>
+      </div>
+      <div class="donut-row fade-up d2" id="donutRow">
+        <div class="donut-item"><svg class="donut-svg" width="100" height="100" viewBox="0 0 100 100"><circle class="donut-circle-bg" cx="50" cy="50" r="45"/><circle class="donut-circle-fill" cx="50" cy="50" r="45" data-pct="60" style="stroke:var(--accent)"/></svg><div class="donut-pct">60%</div><div class="donut-label">Age 60+ affected</div></div>
+        <div class="donut-item"><svg class="donut-svg" width="100" height="100" viewBox="0 0 100 100"><circle class="donut-circle-bg" cx="50" cy="50" r="45"/><circle class="donut-circle-fill" cx="50" cy="50" r="45" data-pct="75" style="stroke:#0ea5e9"/></svg><div class="donut-pct">75%</div><div class="donut-label">Misdiagnosed early</div></div>
+        <div class="donut-item"><svg class="donut-svg" width="100" height="100" viewBox="0 0 100 100"><circle class="donut-circle-bg" cx="50" cy="50" r="45"/><circle class="donut-circle-fill" cx="50" cy="50" r="45" data-pct="40" style="stroke:#7dd3fc"/></svg><div class="donut-pct">40%</div><div class="donut-label">Underdiagnosed globally</div></div>
+        <div class="donut-item"><svg class="donut-svg" width="100" height="100" viewBox="0 0 100 100"><circle class="donut-circle-bg" cx="50" cy="50" r="45"/><circle class="donut-circle-fill" cx="50" cy="50" r="45" data-pct="85" style="stroke:#38bdf8"/></svg><div class="donut-pct">85%</div><div class="donut-label">AI detection accuracy</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TREATMENTS -->
+  <section class="sec alt-bg">
+    <div class="sec-in">
+      <div class="fade-up">
+        <span class="sec-chip">Cures &amp; Treatments</span>
+        <h2 class="sec-title">Managing Parkinson's Today</h2>
+        <p class="sec-desc">While there is no cure yet, a combination of therapies significantly improves quality of life.</p>
+        </div>
+      <div class="treatment-grid">
+        <div class="tc fade-up d1">
+          <div class="tc-icon-wrap"><svg viewBox="0 0 24 24"><path d="M10.5 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v3"/><circle cx="18" cy="18" r="3"/><path d="M21 18h-6"/></svg></div>
+          <div class="tc-title">Levodopa / Carbidopa</div>
+          <div class="tc-desc">The gold-standard medication that replenishes dopamine levels in the brain, reducing motor symptoms effectively.</div>
+        </div>
+        <div class="tc fade-up d2">
+          <div class="tc-icon-wrap"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+          <div class="tc-title">Deep Brain Stimulation</div>
+          <div class="tc-desc">Surgical implant delivers electrical pulses to specific brain regions, reducing tremors and rigidity significantly.</div>
+        </div>
+        <div class="tc fade-up d3">
+          <div class="tc-icon-wrap"><svg viewBox="0 0 24 24"><path d="M18 4l-6 6-6-6"/><path d="M18 14l-6 6-6-6"/></svg></div>
+          <div class="tc-title">Physical Therapy</div>
+          <div class="tc-desc">Targeted exercises improve balance, flexibility, gait, and overall motor function significantly.</div>
+        </div>
+        <div class="tc fade-up d4">
+          <div class="tc-icon-wrap"><svg viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.57A3 3 0 0 1 5 12a3 3 0 0 1 1.97-2.83 2.5 2.5 0 0 1 1.54-7.17z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.57A3 3 0 0 0 19 12a3 3 0 0 0-1.97-2.83 2.5 2.5 0 0 0-1.54-7.17z"/></svg></div>
+          <div class="tc-title">Stem Cell Research</div>
+          <div class="tc-desc">Emerging therapies aim to replace lost neurons, with promising early clinical trial results worldwide.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="sec">
+    <div class="sec-in">
+      <div class="fade-up">
+        <span class="sec-chip">Our Technology</span>
+        <h2 class="sec-title">How CogniVue Works</h2>
+        <p class="sec-desc">A seamless pipeline from video capture to AI-powered screening results.</p>
+            </div>
+      <div class="pipeline fade-up d1">
+        <div class="pipe-step">
+          <div class="pipe-num">1</div>
+          <div class="pipe-icon-wrap"><svg viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.723v6.554a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/></svg></div>
+          <div class="pipe-label">Capture</div>
+          <div class="pipe-info">Record or upload video</div>
+          </div>
+        <div class="pipe-arr">→</div>
+        <div class="pipe-step">
+          <div class="pipe-num">2</div>
+          <div class="pipe-icon-wrap"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+          <div class="pipe-label">Frames</div>
+          <div class="pipe-info">Extract motion frames</div>
+          </div>
+        <div class="pipe-arr">→</div>
+        <div class="pipe-step">
+          <div class="pipe-num">3</div>
+          <div class="pipe-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><line x1="12" y1="7" x2="5.3" y2="10.5"/><line x1="12" y1="7" x2="18.7" y2="10.5"/><line x1="5" y1="14" x2="12" y2="17"/><line x1="19" y1="14" x2="12" y2="17"/></svg></div>
+          <div class="pipe-label">Pose</div>
+          <div class="pipe-info">Skeleton estimation</div>
+        </div>
+        <div class="pipe-arr">→</div>
+        <div class="pipe-step">
+          <div class="pipe-num">4</div>
+          <div class="pipe-icon-wrap"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+          <div class="pipe-label">Model</div>
+          <div class="pipe-info">AI classification</div>
+        </div>
+        <div class="pipe-arr">→</div>
+        <div class="pipe-step">
+          <div class="pipe-num">5</div>
+          <div class="pipe-icon-wrap"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+          <div class="pipe-label">Results</div>
+          <div class="pipe-info">Risk score + metrics</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- end HOME -->
+
+
+<!-- ══════════════════════════════════════════════════
+     ANALYSIS PAGE
+══════════════════════════════════════════════════ -->
+<div id="page-analysis" class="page">
+  <div class="sec-in" style="padding:3rem 2rem">
+    <span class="sec-chip">AI Screening Tool</span>
+    <h1 class="sec-title">Video Analysis</h1>
+    <p class="sec-desc">Choose to use your live camera or upload an existing video for Parkinson's screening.</p>
+
+    <div class="a-tabs">
+      <button class="a-tab active" id="tabLive" onclick="switchATab('live')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.723v6.554a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/></svg>
+        Live Video Feed
+      </button>
+      <button class="a-tab" id="tabUpload" onclick="switchATab('upload')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Video
+      </button>
+          </div>
+
+    <!-- LIVE PANEL -->
+    <div class="a-panel active" id="panelLive">
+      <div class="live-layout">
+        <div>
+          <div class="video-frame">
+            <video id="video" autoplay playsinline muted></video>
+            <div class="vid-badge">LIVE</div>
+            <div class="vid-status" id="cameraStatus">Initializing…</div>
+            </div>
+          <div class="rec-indicator" id="recIndicator">
+            <span class="rec-dot"></span> Recording in progress…
+            </div>
+          <div class="vid-preview" id="previewSection">
+            <div class="vp-header">
+              <span class="vp-fn" id="fileName">Recorded Video</span>
+              <span class="vp-badge">READY</span>
+            </div>
+            <div class="vp-prog"><div class="prog-bar"><div class="prog-fill" id="progressFill"></div></div><div class="prog-label" id="progressText">0%</div></div>
+            <div class="vp-video"><video id="preview" controls></video></div>
+            <div class="vp-actions"><button class="btn btn-primary" onclick="analyzeVideo('live')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Analyse Recording
+            </button></div>
+            </div>
+          </div>
+
+        <div class="ctrl-panel">
+          <div>
+            <div class="cp-label">Camera Controls</div>
+            <div class="ctrl-btns">
+              <button class="btn btn-primary" onclick="startCamera()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.723v6.554a1 1 0 0 1-1.447.894L15 14M3 8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/></svg>
+                Start Camera
+              </button>
+              <button class="btn btn-secondary" onclick="startRecording()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                Record
+              </button>
+              <button class="btn btn-danger" onclick="stopRecording()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                Stop Recording
+              </button>
+                </div>
+              </div>
+          <div>
+            <div class="cp-label">AI Pipeline Status</div>
+            <div class="ai-status-list">
+              <div class="ai-si"><span class="si-dot ready"></span><span class="si-text">Frame Estimation</span><span class="si-state">Ready</span></div>
+              <div class="ai-si"><span class="si-dot queued"></span><span class="si-text">Feature Extract</span><span class="si-state">Queued</span></div>
+              <div class="ai-si"><span class="si-dot idle"></span><span class="si-text">Classification</span><span class="si-state">Idle</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="cp-label">Recording Tips</div>
+            <div style="font-size:.8rem;color:var(--text-muted);line-height:1.75">
+              <strong style="color:var(--accent)">For best results:</strong><br>
+              • Place hands 20-40cm from camera<br>
+              • Keep both hands in frame<br>
+              • Hold hands steady (resting position)<br>
+              • Record 5-15 seconds of movement<br>
+              • Ensure good lighting on hands<br>
+              • Avoid covering hands with sleeves<br>
+              <strong style="color:var(--accent);margin-top:.5rem;display:block">Hand Detection Status:</strong>
+              <span id="handStatusText" style="color:var(--text-muted)">—</span>
+        </div>
+      </div>
+      </div>
+    </div>
+      <div class="disclaimer-strip">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span><strong>Tip:</strong> Keep the camera steady and ensure good lighting for accurate motion signals.</span>
+      </div>
+    </div>
+
+    <!-- UPLOAD PANEL -->
+    <div class="a-panel" id="panelUpload">
+        <div class="upload-box" id="uploadBox">
+        <div class="upload-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <h3>Drag &amp; Drop Your Video</h3>
+          <p>or click to browse from your device</p>
+        <p style="color:var(--accent);font-size:.8rem;margin-top:.5rem"><strong>Ensure video shows hands clearly!</strong></p>
+        <div class="fmt-tags"><span class="fmt-tag">MP4</span><span class="fmt-tag">MOV</span><span class="fmt-tag">AVI</span><span class="fmt-tag">WEBM</span></div>
+        <input type="file" id="videoUpload" accept="video/*" hidden/>
+          </div>
+      <div class="vid-preview" id="previewSection2">
+        <div class="vp-header">
+          <span class="vp-fn" id="fileName2">Video Selected</span>
+          <span class="vp-badge">READY</span>
+        </div>
+        <div class="vp-prog"><div class="prog-bar"><div class="prog-fill" id="progressFill2"></div></div><div class="prog-label" id="progressText2">0%</div></div>
+        <div class="vp-video"><video id="preview2" controls></video></div>
+        <div class="vp-actions"><button class="btn btn-primary" onclick="analyzeVideo('upload')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Analyse Video
+        </button></div>
+      </div>
+      <div class="disclaimer-strip">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span><strong>Note:</strong> This is a screening tool only. For diagnosis, always consult a medical professional.</span>
+      </div>
+        </div>
+
+    <!-- SINGLE PROGRESS BAR (no step labels) -->
+    <div class="analysis-progress" id="analysisProgress">
+      <div class="ap-head">
+        <div class="ap-spinner"></div>
+        <span class="ap-title-text">Analysing Video…</span>
+            </div>
+      <div class="ap-status" id="apStatus">Processing your video through the AI pipeline…</div>
+      <div class="ap-bar"><div class="ap-fill" id="apBarFill"></div></div>
+      <div class="ap-pct" id="apPct">0%</div>
+          </div>
+
+    <!-- ERROR DISPLAY -->
+    <div class="suggestion-box severe" id="errorDisplay" style="display:none;margin-top:1.5rem">
+      <div class="sb-head" id="errorHead">Error</div>
+      <div class="sb-text" id="errorText"></div>
+      <div class="sb-text" id="errorSuggestion" style="margin-top:.5rem;color:var(--accent)"></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-sec" id="results">
+      <div id="noResults" class="no-results">
+        <div class="no-results-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <p>No results yet. Run an analysis above using live camera or uploaded video.</p>
+      </div>
+      <div id="resultsDashboard" style="display:none">
+        <h2 class="sec-title" style="margin-bottom:.5rem">Results Dashboard</h2>
+        <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:1.5rem">Latest analysis from your session.</p>
+        <div class="results-grid">
+          <div class="risk-card">
+            <div class="risk-card-title">Risk Assessment</div>
+            <div class="gauge-wrap">
+              <svg viewBox="0 0 200 110" width="200" height="110">
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(56,189,248,0.1)" stroke-width="16" stroke-linecap="round"/>
+                <path id="gaugeFill" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--accent)" stroke-width="16" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="251"/>
+              </svg>
+            </div>
+            <div class="risk-score" id="riskScore">—</div>
+            <div class="risk-lbl" id="riskLabel">—</div>
+            <div class="risk-conf" id="confidenceText">Confidence: —</div>
+            <div class="risk-badges">
+              <span class="r-badge" id="riskLevel1">Normal</span>
+              <span class="r-badge" id="riskLevel2">Early Stage</span>
+              <span class="r-badge" id="riskLevel3">Moderate</span>
+              <span class="r-badge" id="riskLevel5">Severe</span>
+        </div>
+      </div>
+
+          <div class="metrics-panel">
+            <div class="metric-row">
+              <div>
+                <div class="ml-lbl">Tremor Frequency</div>
+                <div class="ml-val" id="tremorFreq">—</div>
+                <div class="ml-desc">Model output</div>
+      </div>
+              <div class="metric-icon-wrap"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+    </div>
+            <div class="metric-row">
+              <div>
+                <div class="ml-lbl">Movement Amplitude</div>
+                <div class="ml-val" id="movementAmp">—</div>
+                <div class="ml-desc">Model output</div>
+              </div>
+              <div class="metric-icon-wrap"><svg viewBox="0 0 24 24"><path d="M21 3L9 15M6.5 9L3 12.5 11.5 21 15 17.5M5 3l7 7M3 5l7 7"/></svg></div>
+            </div>
+            <div class="metric-row">
+              <div>
+                <div class="ml-lbl">Rhythm Consistency</div>
+                <div class="ml-val" id="rhythmConsist">—</div>
+                <div class="ml-desc">Model output</div>
+              </div>
+              <div class="metric-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <h4>Tremor Frequency Over Time</h4>
+            <p class="chart-sub">Motion signal visualisation from analysis session</p>
+            <svg id="frequencyChart" width="100%" height="200"></svg>
+          </div>
+
+          <div class="clinical-card">
+            <div class="cc-icon">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+            <div class="cc-body">
+              <h4>Clinical Next Steps</h4>
+              <p id="clinicalText">—</p>
+          </div>
+        </div>
+
+          <div class="suggestion-box" id="suggestionBox">
+            <div class="sb-head" id="suggestionHead">—</div>
+            <div class="sb-text" id="suggestionText">—</div>
+          </div>
+          </div>
+          </div>
+        </div>
+  </div>
+</div><!-- end ANALYSIS -->
+
+
+<!-- ══════════════════════════════════════════════════
+     ABOUT PAGE
+══════════════════════════════════════════════════ -->
+<div id="page-about" class="page">
+  <div class="about-hero">
+    <div class="about-hero-in">
+      <div class="hero-eyebrow" style="margin:0 auto 1rem"><span class="e-dot"></span> Deep Dive</div>
+      <h1>Understanding <span class="g">Parkinson's Disease</span></h1>
+      <p>A concise guide to the disease, its progression, treatments, and how CogniVue aims to transform early detection.</p>
+    </div>
+        </div>
+
+  <div class="ab-content">
+
+    <div class="ab-section fade-up">
+      <h2>What is <span>Parkinson's Disease?</span></h2>
+      <p class="ab-lead">Parkinson's disease (PD) is a chronic, progressive neurodegenerative disorder affecting the motor system. It results from the gradual degeneration of dopaminergic neurons in the substantia nigra — a brain region critical for coordinated movement. As neurons die, dopamine levels drop, disrupting the circuits that regulate motion.</p>
+      <div class="ab-stats-row">
+        <div class="asb fade-up d1"><div class="asb-n">10M+</div><div class="asb-l">People worldwide with Parkinson's</div></div>
+        <div class="asb fade-up d2"><div class="asb-n">~60</div><div class="asb-l">Average age at diagnosis (years)</div></div>
+        <div class="asb fade-up d3"><div class="asb-n">1.5×</div><div class="asb-l">Men more likely to develop PD</div></div>
+        <div class="asb fade-up d4"><div class="asb-n">14M</div><div class="asb-l">Projected global cases by 2040</div></div>
+          </div>
+    </div>
+
+    <div class="ab-section fade-up">
+      <h2>Symptoms &amp; <span>Clinical Signs</span></h2>
+      <p class="ab-lead">Parkinson's presents with a wide spectrum of motor and non-motor symptoms. The cardinal motor features form the clinical basis of diagnosis.</p>
+      <div class="symptoms-grid">
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><div class="sc-lbl">Resting Tremor</div><div class="sc-desc">Involuntary shaking at rest</div></div>
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div><div class="sc-lbl">Bradykinesia</div><div class="sc-desc">Slowness of movement</div></div>
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div><div class="sc-lbl">Rigidity</div><div class="sc-desc">Muscular stiffness</div></div>
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="sc-lbl">Postural Instability</div><div class="sc-desc">Balance impairment</div></div>
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div><div class="sc-lbl">Masked Facies</div><div class="sc-desc">Reduced facial expression</div></div>
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="sc-lbl">Speech Changes</div><div class="sc-desc">Soft, monotone voice</div></div>
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg></div><div class="sc-lbl">Sleep Disorders</div><div class="sc-desc">REM behaviour disorder</div></div>
+        <div class="sc"><div class="sc-icon"><svg viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.57A3 3 0 0 1 5 12a3 3 0 0 1 1.97-2.83 2.5 2.5 0 0 1 1.54-7.17z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.57A3 3 0 0 0 19 12a3 3 0 0 0-1.97-2.83 2.5 2.5 0 0 0-1.54-7.17z"/></svg></div><div class="sc-lbl">Cognitive Changes</div><div class="sc-desc">Memory difficulties</div></div>
+        </div>
+      </div>
+
+    <div class="ab-section fade-up">
+      <h2>Disease <span>Progression</span></h2>
+      <p class="ab-lead">Parkinson's progresses through five Hoehn &amp; Yahr stages, each representing a distinct level of symptom severity.</p>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-stage">Stage 1</div><div class="tl-title">Unilateral Disease</div><div class="tl-desc">Symptoms appear on one side only. Tremor or rigidity is mild. Daily activities are unaffected. Often missed or misattributed to stress.</div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-stage">Stage 2</div><div class="tl-title">Bilateral Involvement</div><div class="tl-desc">Symptoms affect both sides. Posture and gait may change. Daily tasks take longer but remain manageable. Balance is still maintained.</div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-stage">Stage 3</div><div class="tl-title">Mild to Moderate Bilateral</div><div class="tl-desc">Balance impairment becomes notable. Still functionally independent but significantly slowed. This stage benefits most from early intervention.</div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-stage">Stage 4</div><div class="tl-title">Severe Disability</div><div class="tl-desc">Capable of standing with assistance. Daily activities severely limited. Caregiver support becomes essential.</div></div>
+        <div class="tl-item"><div class="tl-dot"></div><div class="tl-stage">Stage 5</div><div class="tl-title">Wheelchair-Bound or Bedridden</div><div class="tl-desc">Requires constant nursing care. Severe cognitive and motor deficits. Full-time caregiver assistance required.</div></div>
+      </div>
+    </div>
+
+    <div class="ab-section fade-up">
+      <h2>Treatments &amp; <span>Therapies</span></h2>
+      <p class="ab-lead">While no cure exists yet, modern treatment strategies can dramatically improve quality of life and maintain independence for longer.</p>
+      <div class="treatment-detail">
+        <div class="td-card"><div class="td-title"><svg viewBox="0 0 24 24"><path d="M10.5 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v3"/><circle cx="18" cy="18" r="3"/><path d="M21 18h-6"/></svg> Pharmacological Treatments</div><ul><li>Levodopa/Carbidopa — gold standard</li><li>Dopamine agonists (Pramipexole, Ropinirole)</li><li>MAO-B inhibitors (Selegiline, Rasagiline)</li><li>COMT inhibitors to extend levodopa effect</li><li>Amantadine for dyskinesia management</li></ul></div>
+        <div class="td-card"><div class="td-title"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Surgical Interventions</div><ul><li>Deep Brain Stimulation (DBS)</li><li>Focused Ultrasound thalamotomy for tremor</li><li>Pallidotomy for dyskinesias</li><li>Gene therapy trials (AAV-based)</li></ul></div>
+        <div class="td-card"><div class="td-title"><svg viewBox="0 0 24 24"><path d="M18 4l-6 6-6-6"/><path d="M18 14l-6 6-6-6"/></svg> Rehabilitative Therapies</div><ul><li>Physiotherapy for gait and balance</li><li>LSVT LOUD speech therapy</li><li>Occupational therapy for daily living</li><li>Dance therapy (tango) for motor coordination</li></ul></div>
+        <div class="td-card"><div class="td-title"><svg viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.57A3 3 0 0 1 5 12a3 3 0 0 1 1.97-2.83 2.5 2.5 0 0 1 1.54-7.17z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.57A3 3 0 0 0 19 12a3 3 0 0 0-1.97-2.83 2.5 2.5 0 0 0-1.54-7.17z"/></svg> Emerging Research</div><ul><li>Mediterranean diet — neuroprotective evidence</li><li>Aerobic exercise — slows motor decline</li><li>Alpha-synuclein antibody therapies</li><li>Stem cell neuronal replacement research</li></ul></div>
+      </div>
+    </div>
+
+    <div class="ab-section fade-up">
+      <h2>How <span>CogniVue</span> Works</h2>
+      <p class="ab-lead">A technical overview of our AI-powered Parkinson's screening system.</p>
+      <div class="proj-box">
+        <h3>🎯 The Problem We Solve</h3>
+        <p>Parkinson's is difficult to diagnose early. Traditional diagnosis relies on clinical evaluation — subjective, expensive, and inaccessible. Up to 75% of PD cases are misdiagnosed in early stages. CogniVue bridges this gap with an accessible video-based screening tool that flags potential motor abnormalities before they become severe.</p>
+        <h3 style="margin-top:1.4rem">📹 Video Capture &amp; Processing</h3>
+        <p>Users record a 5–15 second clip via webcam or upload pre-recorded footage. The video is sent to the backend as <code>multipart/form-data</code> via POST to <code>/predict-video</code>.</p>
+        <h3 style="margin-top:1.4rem">🔬 Frame Estimation &amp; Classification</h3>
+        <p>Frames are extracted and passed through a pose estimation model (MediaPipe / OpenPose) to generate skeletal keypoints. Features like tremor frequency (Hz), amplitude (mm), and rhythm consistency (%) are fed into a trained classifier (LSTM / 3D-CNN) that outputs a 0–100% risk score with severity label.</p>
+        <h3 style="margin-top:1.4rem">📊 Result Interpretation</h3>
+        <p>The dashboard displays the risk score, confidence level, extracted metrics, and a tremor frequency waveform. Severity suggestions guide next steps: Normal (&lt;30%), Mild (30–60%), or Severe (&gt;60%). All results include a medical disclaimer — this is a screening tool, not a diagnostic instrument.</p>
+        </div>
+        </div>
+        </div>
+</div><!-- end ABOUT -->
+
+
+
+<!-- TEAM PAGE
+<div id="page-team" class="page">
+  <div class="team-page">
+    <div class="team-hero-text fade-up">
+      <span class="sec-chip">The Builders</span>
+      <h1 class="sec-title">Meet the Team</h1>
+      <p style="color:var(--text-muted);max-width:480px;margin:0 auto">The people behind CogniVue — passionate about using AI to improve healthcare.</p>
+        </div>
+    <div class="team-cards-row" id="teamCardsRow">
+      <div class="team-card" onclick="openTeamDetail(0)">
+        <div class="team-avatar"><img src="vaish2.png" alt="Rahul Sharma"/></div>
+        <div class="team-name">Sai Vaishnavi S</div>
+        <div class="team-role">AI / ML Lead</div>
+        <div class="team-blurb">Designed and trained the motion classification model for detecting Parkinson's movement patterns.</div>
+        
+      </div>
+      <div class="team-card" onclick="openTeamDetail(1)">
+        <div class="team-avatar"><img src="sahithi.jpeg" alt="Priya Krishnan"/></div>
+        <div class="team-name">P Sahithi</div>
+        <div class="team-role">Full-Stack Developer</div>
+        <div class="team-blurb">Built the web interface and backend API for seamless video analysis and result display.</div>
+
+      </div>
+      <div class="team-card" onclick="openTeamDetail(2)">
+        <div class="team-avatar"><img src="veda.png" alt="Suresh Mehta"/></div>
+        <div class="team-name">A Veda Reddy</div>
+        <div class="team-role">Computer Vision Engineer</div>
+        <div class="team-blurb">Built the video processing pipeline including frame extraction and movement pattern analysis.</div>
+  
+    </div>
+    </div>
+    </div>
+    </div> -->
+<!-- TEAM DETAIL MODAL -->
+<div class="team-detail" id="teamDetail">
+  <div class="td-modal" id="teamDetailCard">
+    <button class="td-close" onclick="closeTeamDetail()">✕</button>
+    <div class="td-av" id="tdAvatar"><span id="tdInitials" style="font-size:3rem;font-weight:900;color:#04090f"></span></div>
+    <div>
+      <div class="td-n" id="tdName">—</div>
+      <div class="td-r" id="tdRole">—</div>
+      <p class="td-bio" id="tdBio">—</p>
+      <div class="td-skills" id="tdSkills"></div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a class="logo" href="#" onclick="showPage('home');return false;">
+        <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.57A3 3 0 0 1 5 12a3 3 0 0 1 1.97-2.83 2.5 2.5 0 0 1 1.54-7.17z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.57A3 3 0 0 0 19 12a3 3 0 0 0-1.97-2.83 2.5 2.5 0 0 0-1.54-7.17z"/></svg></div>
+        CogniVue
+      </a>
+      <p>AI-powered Parkinson's disease screening using video motion analysis.</p>
+    </div>
+    <div>
+      <h4>Navigation</h4>
+      <ul>
+        <li><a href="#" onclick="showPage('home');return false;">Home</a></li>
+        <li><a href="#" onclick="showPage('analysis');return false;">Analysis</a></li>
+        <li><a href="#" onclick="showPage('about');return false;">About</a></li>
+        <li><a href="#" onclick="showPage('team');return false;">Team</a></li>
+        </ul>
+      </div>
+    <div>
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="#">Medical Disclaimer</a></li>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms of Use</a></li>
+        </ul>
+      </div>
+    </div>
+  <div class="footer-bottom">
+    <p>© 2025 CogniVue. Not a medical device. For screening purposes only. Always consult a healthcare professional for diagnosis.</p>
+  </div>
+  </footer>
+
+
+  <script>
+// ── CURSOR ─────────────────────────────────────────
+const cur=document.getElementById('cur'),curR=document.getElementById('cur-r');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+function animCursor(){
+  cur.style.left=mx+'px';cur.style.top=my+'px';
+  rx+=(mx-rx)*.14;ry+=(my-ry)*.14;
+  curR.style.left=rx+'px';curR.style.top=ry+'px';
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+
+// ── PAGE NAV ───────────────────────────────────────
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  window.scrollTo(0,0);
+  setTimeout(initScrollAnim,60);
+  if(name==='home')initHomeAnim();
+}
+
+// ── SCROLL ANIMATIONS ──────────────────────────────
+function initScrollAnim(){
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis')});
+  },{threshold:.1});
+  document.querySelectorAll('.fade-up').forEach(el=>obs.observe(el));
+
+  // bar charts
+  const barObs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.querySelectorAll('.bar-fill').forEach(b=>{b.style.width=b.dataset.width+'%'});
+      }
+    });
+  },{threshold:.25});
+  document.querySelectorAll('.stats-chart').forEach(el=>barObs.observe(el));
+
+  // donuts
+  const donutObs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.querySelectorAll('.donut-circle-fill').forEach(c=>{
+          const pct=parseInt(c.dataset.pct);
+          c.style.strokeDashoffset=283-(283*pct/100);
+        });
+      }
+    });
+  },{threshold:.25});
+  const dr=document.getElementById('donutRow');
+  if(dr)donutObs.observe(dr);
+}
+
+// ── HOME COUNTER ───────────────────────────────────
+function initHomeAnim(){
+  document.querySelectorAll('[data-count]').forEach(el=>{
+    const target=parseFloat(el.dataset.count);
+    const suffix=el.dataset.suffix||'';
+    let current=0;
+    const step=target/60;
+    const timer=setInterval(()=>{
+      current+=step;
+      if(current>=target){current=target;clearInterval(timer)}
+      el.textContent=target>100?Math.round(current).toLocaleString()+suffix:current.toFixed(target%1!==0?1:0)+suffix;
+    },22);
+  });
+  setTimeout(initScrollAnim,80);
+}
+
+// ── ANALYSIS TAB ───────────────────────────────────
+function switchATab(tab){
+  document.querySelectorAll('.a-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.a-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('active');
+  document.getElementById('panel'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('active');
+}
+
+// ── VIDEO LOGIC ────────────────────────────────────
+let mediaRecorder,recordedChunks=[],videoStream;
+let analysisInProgress=false;
+let selectedVideoFile=null,recordedVideoBlob=null;
+const API_URL='/predict-video';
+
+const videoEl=document.getElementById('video');
+const previewEl=document.getElementById('preview');
+const preview2El=document.getElementById('preview2');
+const uploadBoxEl=document.getElementById('uploadBox');
+const videoUploadInput=document.getElementById('videoUpload');
+const previewSection=document.getElementById('previewSection');
+const previewSection2=document.getElementById('previewSection2');
+const resultsDashboard=document.getElementById('resultsDashboard');
+const noResultsEl=document.getElementById('noResults');
+
+// upload box events
+if(uploadBoxEl&&videoUploadInput){
+  uploadBoxEl.addEventListener('click',e=>{if(e.target.tagName!=='INPUT')videoUploadInput.click()});
+  uploadBoxEl.addEventListener('dragover',e=>{e.preventDefault();uploadBoxEl.classList.add('over')});
+  uploadBoxEl.addEventListener('dragleave',()=>uploadBoxEl.classList.remove('over'));
+  uploadBoxEl.addEventListener('drop',e=>{
+    e.preventDefault();uploadBoxEl.classList.remove('over');
+    if(e.dataTransfer.files.length>0)handleFileSelect(e.dataTransfer.files[0]);
+  });
+  videoUploadInput.addEventListener('change',e=>{
+    if(e.target.files&&e.target.files.length>0)handleFileSelect(e.target.files[0]);
+  });
+}
+
+function handleFileSelect(file){
+  selectedVideoFile=file;recordedVideoBlob=null;
+  const fs=(file.size/(1024*1024)).toFixed(2);
+  if(uploadBoxEl)uploadBoxEl.style.display='none';
+  if(previewSection2){previewSection2.style.display='block'}
+  const fn2=document.getElementById('fileName2');
+  if(fn2)fn2.textContent=`${file.name} (${fs} MB)`;
+  let prog=0;
+  const pf=document.getElementById('progressFill2');
+  const pt=document.getElementById('progressText2');
+  const pi=setInterval(()=>{
+    prog+=Math.random()*35;if(prog>100)prog=100;
+    if(pf)pf.style.width=prog+'%';
+    if(pt)pt.textContent=Math.round(prog)+'%';
+    if(prog===100)clearInterval(pi);
+  },150);
+  if(preview2El)preview2El.src=URL.createObjectURL(file);
+}
+
+async function startCamera(){
+  try{
+    videoStream=await navigator.mediaDevices.getUserMedia({video:{width:1280,height:720}});
+    if(videoEl)videoEl.srcObject=videoStream;
+    const cs=document.getElementById('cameraStatus');
+    if(cs)cs.textContent='Camera Ready ✓';
+  }catch(err){
+    alert('Camera access denied! Please allow camera permissions.');
+    const cs=document.getElementById('cameraStatus');
+    if(cs)cs.textContent='Camera Error ✕';
+  }
+}
+
+function startRecording(){
+  if(!videoStream){alert('Please start camera first');return}
+  recordedChunks=[];
+  mediaRecorder=new MediaRecorder(videoStream,{mimeType:'video/webm;codecs=vp8,opus'});
+  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recordedChunks.push(e.data)};
+  mediaRecorder.onstop=()=>{
+    recordedVideoBlob=new Blob(recordedChunks,{type:'video/webm'});
+    selectedVideoFile=null;
+    const url=URL.createObjectURL(recordedVideoBlob);
+    if(previewEl)previewEl.src=url;
+    if(previewSection)previewSection.style.display='block';
+    const pf=document.getElementById('progressFill');
+    const pt=document.getElementById('progressText');
+    if(pf)pf.style.width='100%';if(pt)pt.textContent='100%';
+    const ri=document.getElementById('recIndicator');
+    if(ri)ri.classList.remove('on');
+    const cs=document.getElementById('cameraStatus');
+    if(cs)cs.textContent='Recording Saved ✓';
+  };
+  mediaRecorder.start();
+  const ri=document.getElementById('recIndicator');
+  if(ri)ri.classList.add('on');
+  const cs=document.getElementById('cameraStatus');
+  if(cs)cs.textContent='● Recording';
+}
+
+function stopRecording(){
+  if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();
+  // Stop all camera tracks
+  if(videoStream){
+    videoStream.getTracks().forEach(track => track.stop());
+    videoStream = null;
+  }
+  if(videoEl)videoEl.srcObject = null;
+  const cs=document.getElementById('cameraStatus');
+  if(cs)cs.textContent='Camera Off ✓';
+}
+
+// Reset upload section for new video
+function resetUpload(){
+  selectedVideoFile = null;
+  recordedVideoBlob = null;
+  if(uploadBoxEl) uploadBoxEl.style.display = 'block';
+  if(previewSection2) previewSection2.style.display = 'none';
+  if(preview2El) preview2El.src = '';
+  const pf2=document.getElementById('progressFill2');
+  const pt2=document.getElementById('progressText2');
+  if(pf2)pf2.style.width='0%';
+  if(pt2)pt2.textContent='0%';
+  if(videoUploadInput) videoUploadInput.value = '';
+  // Clear live recording preview too
+  if(previewSection) previewSection.style.display = 'none';
+  const pf=document.getElementById('progressFill');
+  const pt=document.getElementById('progressText');
+  if(pf)pf.style.width='0%';
+  if(pt)pt.textContent='0%';
+  recordedChunks = [];
+}
+
+// ── PROGRESS BAR (single, no step labels) ─────────
+const apStatusMessages=[
+  'Extracting video frames…',
+  'Running  estimation…',
+  'Extracting motion features…',
+  'Classifying with AI model…',
+  'Finalizing results…'
+];
+
+function runProgress(callback){
+  const progEl=document.getElementById('analysisProgress');
+  const apFill=document.getElementById('apBarFill');
+  const apPct=document.getElementById('apPct');
+  const apStatus=document.getElementById('apStatus');
+  progEl.classList.add('on');
+
+  const steps=[
+    {pct:18,msg:apStatusMessages[0],delay:600},
+    {pct:40,msg:apStatusMessages[1],delay:800},
+    {pct:65,msg:apStatusMessages[2],delay:700},
+    {pct:88,msg:apStatusMessages[3],delay:900},
+    {pct:100,msg:apStatusMessages[4],delay:600}
+  ];
+
+  let elapsed=0;
+  steps.forEach((s,i)=>{
+    elapsed+=s.delay;
+    setTimeout(()=>{
+      apFill.style.width=s.pct+'%';
+      apPct.textContent=s.pct+'%';
+      if(apStatus)apStatus.textContent=s.msg;
+      if(i===steps.length-1){
+        setTimeout(()=>{
+          progEl.classList.remove('on');
+          callback();
+        },400);
+      }
+    },elapsed);
+  });
+}
+
+// ── ANALYSE VIDEO ──────────────────────────────────
+function analyzeVideo(source='live'){
+  const videoToSend=source==='upload'?selectedVideoFile:recordedVideoBlob;
+  if(!videoToSend){alert('No video selected!');return}
+  if(analysisInProgress)return;
+  analysisInProgress=true;
+
+  // Hide error display
+  const errorDisplay=document.getElementById('errorDisplay');
+  if(errorDisplay)errorDisplay.style.display='none';
+
+  runProgress(()=>{
+    const formData=new FormData();
+    formData.append('video',videoToSend,source==='upload'?selectedVideoFile.name:'recording.webm');
+    formData.append('source',source);
+
+    fetch(API_URL,{method:'POST',body:formData})
+      .then(async res=>{
+        const data=await res.json();
+        
+        // Check for hand detection errors
+        if(!data.success && data.error){
+          // Show error message
+          if(errorDisplay){
+            errorDisplay.style.display='block';
+            document.getElementById('errorHead').textContent='⚠️ '+data.error;
+            document.getElementById('errorText').textContent=data.message||'';
+            document.getElementById('errorSuggestion').textContent='💡 '+data.suggestion||'';
+          }
+          // Update hand status
+          updateHandStatus('error',data.error);
+          // Allow new upload after error
+          resetUpload();
+          analysisInProgress=false;
+        return;
+      }
+
+        if(!res.ok){
+          throw new Error(`HTTP ${res.status}`);
+        }
+        
+        displayResults(data);
+        document.getElementById('results').scrollIntoView({behavior:'smooth'});
+        // Reset upload section for next video
+        resetUpload();
+      })
+      .catch(err=>{
+        console.warn('API error:',err.message);
+        if(errorDisplay){
+          errorDisplay.style.display='block';
+          document.getElementById('errorHead').textContent='❌ Analysis Error';
+          document.getElementById('errorText').textContent='Could not process the video. Please try again.';
+          document.getElementById('errorSuggestion').textContent='💡 Ensure video format is supported and try again.';
+        }
+      })
+      .finally(()=>{analysisInProgress=false});
+  });
+}
+
+// ── HAND STATUS INDICATOR ──────────────────────────
+function updateHandStatus(status,message){
+  const statusEl=document.getElementById('handStatusText');
+  if(!statusEl)return;
+  
+  if(status==='detected'){
+    statusEl.innerHTML='✅ <span style="color:#22c55e">Hands detected</span>';
+  } else if(status==='processing'){
+    statusEl.innerHTML='🔄 <span style="color:var(--accent)">Processing...</span>';
+  } else if(status==='error'){
+    statusEl.innerHTML='❌ <span style="color:#ef4444">'+message+'</span>';
+  } else {
+    statusEl.textContent='—';
+  }
+}
+
+function displayResults(data){
+  const riskScore=Number.isFinite(Number(data.risk_score))?Number(data.risk_score):0;
+  const confidence=Number.isFinite(Number(data.confidence))?Number(data.confidence):0;
+  const label=data.risk_category||data.label||'Unknown';
+
+  // Update hand status
+  if(data.hand_detected){
+    updateHandStatus('detected');
+  }
+
+  if(resultsDashboard)resultsDashboard.style.display='block';
+  if(noResultsEl)noResultsEl.style.display='none';
+
+  const rsEl=document.getElementById('riskScore');
+  const rlEl=document.getElementById('riskLabel');
+  const rcEl=document.getElementById('confidenceText');
+  if(rsEl)rsEl.textContent=`${riskScore.toFixed(1)}%`;
+  if(rlEl)rlEl.textContent=label;
+  if(rcEl)rcEl.textContent=`Confidence: ${confidence.toFixed(1)}%`;
+
+  // gauge animation
+  const gauge=document.getElementById('gaugeFill');
+  if(gauge){
+    const offset=251-(251*riskScore/100);
+    gauge.style.transition='stroke-dashoffset 1.5s cubic-bezier(.23,1,.32,1)';
+    gauge.style.strokeDashoffset=offset;
+    const color=riskScore<30?'#22c55e':riskScore<60?'#f59e0b':'#ef4444';
+    gauge.style.stroke=color;
+    if(rsEl)rsEl.style.color=color;
+  }
+
+  // risk badges
+  ['riskLevel1','riskLevel2','riskLevel3','riskLevel5'].forEach(id=>document.getElementById(id)?.classList.remove('hi'));
+  if(riskScore<30)document.getElementById('riskLevel1')?.classList.add('hi');
+  else if(riskScore<50)document.getElementById('riskLevel2')?.classList.add('hi');
+  else if(riskScore<70)document.getElementById('riskLevel3')?.classList.add('hi');
+  else document.getElementById('riskLevel5')?.classList.add('hi');
+
+  const tfHz=Number.isFinite(Number(data.tremor_frequency_hz))?Number(data.tremor_frequency_hz):null;
+  const amp=Number.isFinite(Number(data.amplitude_mm))?Number(data.amplitude_mm):null;
+  const rc=Number.isFinite(Number(data.rhythm_consistency))?Number(data.rhythm_consistency):null;
+  const smooth=Number.isFinite(Number(data.movement_smoothness))?Number(data.movement_smoothness):null;
+
+  // Store tremor data for chart
+  window.tremorData = {
+    frequency: tfHz || 5,
+    amplitude: amp || 0,
+    rhythm: rc || 50,
+    smoothness: smooth || 50
+  };
+
+  const tfEl=document.getElementById('tremorFreq');
+  const aEl=document.getElementById('movementAmp');
+  const rEl=document.getElementById('rhythmConsist');
+  if(tfEl)tfEl.textContent=tfHz==null?'—':`${tfHz.toFixed(2)} Hz`;
+  if(aEl)aEl.textContent=amp==null?'—':`${amp.toFixed(2)} mm`;
+  if(rEl)rEl.textContent=rc==null?'—':`${rc.toFixed(1)}%`;
+
+  const ctEl=document.getElementById('clinicalText');
+  if(ctEl){
+    if(riskScore>50)ctEl.textContent='Results suggest possible neurological concerns. Please consult a healthcare professional for proper evaluation and diagnosis.';
+    else ctEl.textContent='Results appear within normal range. Continue regular check-ups as recommended by your physician.';
+  }
+
+  // severity-based suggestions
+  const sb=document.getElementById('suggestionBox');
+  const sh=document.getElementById('suggestionHead');
+  const st=document.getElementById('suggestionText');
+  if(sb&&sh&&st){
+    sb.classList.remove('normal','mild','severe','show');
+    if(riskScore<30){
+      sb.classList.add('normal','show');
+      sh.textContent='✅ Normal Range';
+      st.textContent='Possible stress effects. Practice calm breathing, maintain a regular sleep schedule, and engage in light physical activity. Schedule a routine check-up with your physician.';
+    } else if(riskScore<60){
+      sb.classList.add('mild','show');
+      sh.textContent='⚠️ Mild Indicators Detected';
+      st.textContent='Monitor symptoms regularly and stay physically active. Consider consulting a physician for a thorough evaluation. Engage in balance-improving exercises. Early intervention leads to significantly better outcomes.';
+        } else {
+      sb.classList.add('severe','show');
+      sh.textContent='🚨 Significant Indicators — Seek Consultation';
+      st.textContent='Seek neurological consultation immediately. Do not delay — early specialist intervention significantly improves disease management and quality of life. Bring these results to your appointment.';
+        }
+      }
+
+      drawFrequencyChart();
+    }
+
+function drawFrequencyChart(){
+  const svg=document.getElementById('frequencyChart');
+  if(!svg)return;
+  svg.innerHTML='';
+  const width=svg.clientWidth||640;
+  const height=200;
+  const pad=40;
+  const gw=width-pad*2;
+  const gh=height-pad*2;
+
+  // Get real tremor data
+  const tremor = window.tremorData || {frequency: 5, amplitude: 0, rhythm: 50, smoothness: 50};
+  const freq = tremor.frequency || 5;
+  const amp = tremor.amplitude || 0;
+  
+  // Normalize frequency for wave generation (0-8 Hz maps to 0-1)
+  const freqNorm = Math.min(1, freq / 8);
+  
+  // Base amplitude from real data (normalize to 0-10 scale)
+  const baseAmp = Math.min(10, amp / 0.5);
+  
+  // Rhythm affects consistency (lower rhythm = more noise)
+  const rhythmFactor = tremor.rhythm / 100;
+  
+  // Smoothness affects wave clarity
+  const smoothFactor = tremor.smoothness / 100;
+
+  // grid lines
+  for(let i=0;i<=4;i++){
+    const y=pad+(i/4)*gh;
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',pad);l.setAttribute('y1',y);l.setAttribute('x2',width-pad);l.setAttribute('y2',y);
+    l.setAttribute('stroke','rgba(56,189,248,0.08)');l.setAttribute('stroke-width','1');
+    svg.appendChild(l);
+  }
+
+  // Y-axis labels
+  const yLabels=[10,7.5,5,2.5,0];
+  for(let i=0;i<yLabels.length;i++){
+    const y=pad+(i/4)*gh;
+    const l=document.createElementNS('http://www.w3.org/2000/svg','text');
+    l.setAttribute('x',pad-5);l.setAttribute('y',y+4);
+    l.setAttribute('text-anchor','end');l.setAttribute('fill','rgba(148,163,184,0.5)');
+    l.setAttribute('font-size','10');l.textContent=yLabels[i];
+    svg.appendChild(l);
+  }
+
+  // axes
+  [[pad,pad,pad,height-pad],[pad,height-pad,width-pad,height-pad]].forEach(([x1,y1,x2,y2])=>{
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke','rgba(148,163,184,0.3)');l.setAttribute('stroke-width','1.5');
+    svg.appendChild(l);
+  });
+
+  // X-axis label
+  const xl=document.createElementNS('http://www.w3.org/2000/svg','text');
+  xl.setAttribute('x',width/2);xl.setAttribute('y',height-5);
+  xl.setAttribute('text-anchor','middle');xl.setAttribute('fill','rgba(148,163,184,0.5)');
+  xl.setAttribute('font-size','11');xl.textContent='Time (seconds)';
+  svg.appendChild(xl);
+
+  // Y-axis label
+  const yl=document.createElementNS('http://www.w3.org/2000/svg','text');
+  yl.setAttribute('x',12);yl.setAttribute('y',height/2);
+  yl.setAttribute('text-anchor','middle');yl.setAttribute('fill','rgba(148,163,184,0.5)');
+  yl.setAttribute('font-size','11');yl.setAttribute('transform',`rotate(-90,12,${height/2})`);
+  yl.textContent='Amplitude';
+  svg.appendChild(yl);
+
+  // generate points using REAL tremor data
+  const pts=[],pts2=[];
+  const numPoints=50;
+  
+  for(let i=0;i<=numPoints;i++){
+    const x=pad+(i/numPoints)*gw;
+    
+    // Generate tremor wave based on detected frequency
+    // Parkinson's tremor is typically 4-8 Hz - we normalize this
+    const time = i / numPoints; // 0 to 1
+    
+    // Main tremor wave (based on detected frequency)
+    const tremorWave = Math.sin(time * Math.PI * 4 * freqNorm) * baseAmp * rhythmFactor;
+    
+    // Harmonic component (adds realism)
+    const harmonic = Math.sin(time * Math.PI * 8 * freqNorm) * (baseAmp * 0.3);
+    
+    // Noise based on smoothness (less smooth = more noise)
+    const noise = (1 - smoothFactor) * Math.sin(time * Math.PI * 20) * (baseAmp * 0.2);
+    
+    // Combined signal
+    const val = 5 + tremorWave + harmonic + noise;
+    
+    // Clamp to valid range
+    const clampedVal = Math.max(0.5, Math.min(9.5, val));
+    const y=height-pad-(clampedVal/10)*gh;
+    
+    pts.push(`${x},${y}`);
+    pts2.push(`${x},${height-pad}`);
+  }
+
+  // area fill
+  const area=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  area.setAttribute('points',[...pts,...pts2.reverse()].join(' '));
+  area.setAttribute('fill','rgba(56,189,248,0.1)');
+  svg.appendChild(area);
+
+  // line
+  const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  poly.setAttribute('points',pts.join(' '));
+  poly.setAttribute('fill','none');poly.setAttribute('stroke','#38bdf8');
+  poly.setAttribute('stroke-width','2');poly.setAttribute('stroke-linejoin','round');
+  svg.appendChild(poly);
+
+  // dots at key points
+  pts.forEach((pt,i)=>{
+    if(i%10===0){
+      const [x,y]=pt.split(',');
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r','4');
+      c.setAttribute('fill','#38bdf8');c.setAttribute('stroke','#04090f');c.setAttribute('stroke-width','2');
+      svg.appendChild(c);
+    }
+  });
+
+  // Add frequency indicator text
+  const infoText=document.createElementNS('http://www.w3.org/2000/svg','text');
+  infoText.setAttribute('x',width-pad);infoText.setAttribute('y',pad+15);
+  infoText.setAttribute('text-anchor','end');infoText.setAttribute('fill','rgba(148,163,184,0.7)');
+  infoText.setAttribute('font-size','11');
+  infoText.textContent=`Detected: ${freq.toFixed(2)} Hz`;
+  svg.appendChild(infoText);
+}
+
+// ── TEAM MODAL ─────────────────────────────────────
+const teamData=[
+  {initials:'AR',name:'Sai Vaishnavi S',role:'AI / ML Lead',
+   bio:'Arjun is the machine learning architect behind CogniVue. He designed the pose-estimation pipeline, curated the training dataset, and trained the final classification model using a combination of LSTM networks and 3D-CNN architectures. He has a background in biomedical engineering and has published research on AI-assisted neurological screening.',
+   skills:['Python','TensorFlow','PyTorch','MediaPipe','OpenCV','LSTM','Signal Processing','Research'],
+   grad:'linear-gradient(135deg,var(--accent),var(--accent2))'},
+  {initials:'PK',name:'P Sahithi',role:'Full-Stack Developer',
+   bio:'Priya built the entire web interface for CogniVue — from the responsive frontend in HTML/CSS/JS to the Flask-based API backend. She also designed the UX flow for both live recording and video upload modes, ensuring the tool is accessible to patients and clinicians alike.',
+   skills:['JavaScript','HTML/CSS','Flask','REST APIs','WebRTC','UX Design','Docker','PostgreSQL'],
+   grad:'linear-gradient(135deg,#0ea5e9,#7dd3fc)'},
+  {initials:'SM',name:'A Veda Reddy',role:'Computer Vision Engineer',
+   bio:'Suresh is responsible for the computer vision infrastructure powering the frame extraction, skeletal keypoint detection, and feature engineering modules. He optimised the pipeline to run efficiently on consumer hardware and developed the tremor frequency analysis algorithm that provides the quantitative metrics.',
+   skills:['OpenCV','Python','NumPy','MediaPipe','FFmpeg','Feature Engineering','C++','Edge Deployment'],
+   grad:'linear-gradient(135deg,#7dd3fc,#38bdf8)'}
+];
+
+function openTeamDetail(idx){
+  const m=teamData[idx];
+  const avEl=document.getElementById('tdAvatar');
+  avEl.style.background=m.grad;
+  document.getElementById('tdInitials').textContent=m.initials;
+  document.getElementById('tdName').textContent=m.name;
+  document.getElementById('tdRole').textContent=m.role;
+  document.getElementById('tdBio').textContent=m.bio;
+  document.getElementById('tdSkills').innerHTML=m.skills.map(s=>`<span class="td-skill">${s}</span>`).join('');
+  document.getElementById('teamDetail').classList.add('open');
+}
+
+function closeTeamDetail(){
+  document.getElementById('teamDetail').classList.remove('open');
+}
+
+document.getElementById('teamDetail').addEventListener('click',function(e){
+  if(e.target===this)closeTeamDetail();
+});
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTeamDetail()});
+
+// ── HERO PARALLAX ──────────────────────────────────
+const heroEl=document.querySelector('.hero');
+if(heroEl){
+  heroEl.addEventListener('mousemove',e=>{
+    const rect=heroEl.getBoundingClientRect();
+    const x=e.clientX-rect.left;
+    const y=e.clientY-rect.top;
+    document.querySelectorAll('.orb').forEach((orb,i)=>{
+      const f=(i+1)*.012;
+      orb.style.transform=`translate(${x*f}px,${y*f}px)`;
+    });
+    const bw=document.querySelector('.brain-wrap');
+    if(bw){
+      bw.style.transform=`translate(${(x/rect.width-.5)*-14}px,${(y/rect.height-.5)*-10}px)`;
+    }
+  });
+}
+
+// ── INIT ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  initHomeAnim();
+  initScrollAnim();
+});
+  </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+@startuml
+title Activity Diagram
+
+start
+
+:User Uploads/Records Video;
+:Validate Video;
+
+if (Valid?) then (No)
+    :Show Error;
+    stop
+else (Yes)
+    :Extract Features;
+    :Detect Hands;
+    :Calculate Tremor Features;
+
+    if (Model Available?) then (Yes)
+        :Make Prediction;
+    else (No)
+        :Use Rule-based Calculation;
+    endif
+
+    :Calculate Risk Score;
+    :Display Results;
+endif
+
+stop
+@enduml

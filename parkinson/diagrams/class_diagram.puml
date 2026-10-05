@@ -1,0 +1,34 @@
+@startuml
+title Class Diagram
+
+class HandFeatureExtractor {
+    - model_path: str
+    - landmarker: HandLandmarker
+    + extract_features_from_video(video_path)
+    + detect_hands(frame)
+    - calculate_tremor_features()
+    - calculate_frequency()
+    - calculate_amplitude()
+}
+
+class ParkinsonModel {
+    - model: Any
+    - scaler: Any
+    - label_encoder: Any
+    + load()
+    + predict(features)
+    + get_model_info()
+}
+
+class FastAPIApp {
+    - app: FastAPI
+    + predict_video(video)
+    + health()
+    + model_info()
+    + test_hand_detection()
+}
+
+HandFeatureExtractor --> ParkinsonModel : uses
+FastAPIApp --> HandFeatureExtractor : uses
+FastAPIApp --> ParkinsonModel : uses
+@enduml

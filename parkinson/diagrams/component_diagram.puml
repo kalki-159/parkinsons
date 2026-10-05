@@ -1,0 +1,17 @@
+@startuml
+title Component Diagram
+
+component "Frontend" as UI
+component "API Server" as API
+component "Feature Extractor" as Extractor
+component "ML Model" as Model
+component "Rule Engine" as Rules
+
+UI --> API : HTTP Request
+API --> Extractor : Extract Features
+Extractor --> Model : Predict
+Model --> API : Results
+API --> Rules : Fallback
+Rules --> API : Risk Score
+API --> UI : JSON Response
+@enduml

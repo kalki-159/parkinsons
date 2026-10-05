@@ -1,0 +1,11 @@
+fastapi
+a2wsgi
+tensorflow
+joblib
+scikit-learn
+numpy
+pandas
+opencv-python-headless>=4.8.0
+mediapipe>=0.10.0
+scipy>=1.11.0
+python-multipart
