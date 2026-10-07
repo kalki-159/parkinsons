@@ -9,11 +9,6 @@
 
 **Subtitle:** A Machine Learning and Computer Vision Approach
 
-**Presented By:** [Your Name]
-
-**Department:** Computer Science & Engineering
-
-**Institution:** [Your Institution Name]
 
 ---
 
@@ -75,8 +70,7 @@
 
 **Technology Stack**
 - Frontend: HTML, CSS, JavaScript
-- Backend: Python, FastAPI
-- ML: TensorFlow, Keras, scikit-learn
+- Backend: Python, FastAPI, ML
 - CV: OpenCV, MediaPipe
 
 **Key Features**
@@ -232,6 +226,3 @@
 
 **Thank You!**
 
-Questions & Discussion
-
-Contact: [your.email@example.com]
